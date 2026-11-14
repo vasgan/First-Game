@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08ad8b2148af34800af7f1eec144f12e, type: 3}
+  m_Name: TowerCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::FirstGame.TowerCatalog
+  towers:
+  - {fileID: 11400000, guid: 7b10da9ab0c59449a890f33ebbc62cfb, type: 2}
+  - {fileID: 11400000, guid: 1cf82bbeaf73946ccbae367e067635cc, type: 2}
+  - {fileID: 11400000, guid: 1cf81b8d3242f44e58aabaaf44cf3c4a, type: 2}
+  - {fileID: 11400000, guid: c75dcc244b4d84ce7b998841d9905080, type: 2}
