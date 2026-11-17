@@ -48,6 +48,15 @@ namespace FirstGameEditor
             Require(GameUI.FormatTargetingAction(TargetingRule.Strongest).Contains("Strongest"),
                 "Tower action card must show the active targeting rule.");
 
+            LocalProgress.Load();
+            Require(LocalProgress.IsUnlocked(1), "The first level must remain available after loading local progress.");
+            Require(!LocalProgress.TryNormalize(0, 0, out _),
+                "An empty save must be rejected for recovery.");
+            Require(!LocalProgress.TryNormalize(1, 99, out _),
+                "An incompatible progress value must be rejected for recovery.");
+            Require(LocalProgress.TryNormalize(1, 0, out int completed) && completed == 0,
+                "A valid empty campaign progress must remain playable.");
+
             SafeAreaLayout.GetAnchors(new Rect(0f, 60f, 1080f, 1800f), new Vector2(1080f, 1920f),
                 out Vector2 anchorMin, out Vector2 anchorMax);
             Require(anchorMin == new Vector2(0f, .03125f) && anchorMax == new Vector2(1f, .96875f),

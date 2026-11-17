@@ -50,6 +50,7 @@ namespace FirstGame
         [SerializeField] private GameObject resultPanel;
         [SerializeField] private Text resultText;
         [SerializeField] private Button restartButton;
+        [SerializeField] private Button menuButton;
 
         [Header("Tutorial")]
         [SerializeField] private GameObject tutorialPanel;
@@ -72,6 +73,7 @@ namespace FirstGame
             EnsureTutorialUi();
             EnsureTimeControlUi();
             EnsureAudioSettingsUi();
+            EnsureMenuButton();
             EnsureTowerActionUi();
             game.Economy.Changed += Refresh;
             game.BaseHealth.Changed += Refresh;
@@ -90,6 +92,7 @@ namespace FirstGame
             testProfileButton.image.color = game.IsTestProfile
                 ? new Color(0.25f, 0.8f, 0.55f) : new Color(0.65f, 0.65f, 0.7f);
             restartButton.onClick.AddListener(game.Restart);
+            menuButton.onClick.AddListener(game.ReturnToMenu);
             actionButton.onClick.AddListener(PerformAction);
             sellButton.onClick.AddListener(SellSelectedTower);
             targetingButton.onClick.AddListener(CycleSelectedTowerTargeting);
@@ -509,6 +512,15 @@ namespace FirstGame
             targetingButtonText = targetingButton.GetComponentInChildren<Text>();
             sellButtonText.fontSize = 18;
             targetingButtonText.fontSize = 18;
+        }
+
+        private void EnsureMenuButton()
+        {
+            if (menuButton) return;
+            Canvas canvas = GetComponentInParent<Canvas>();
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            menuButton = CreateTutorialButton(GetUiLayoutParent(canvas), font, "MENU",
+                new Vector2(.21f, .785f), new Vector2(.36f, .835f), new Color(.45f, .45f, .5f));
         }
 
         private void EnsureSafeAreaLayout()

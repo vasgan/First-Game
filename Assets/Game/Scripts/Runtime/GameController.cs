@@ -128,6 +128,7 @@ namespace FirstGame
 
             ResetSimulationSpeed();
             State = won ? GameState.Won : GameState.Lost;
+            if (won) LocalProgress.MarkCompleted(1);
             GameAudio.PlayResult(won);
             waveController.StopWave();
             foreach (TowerController tower in FindObjectsByType<TowerController>(FindObjectsSortMode.None))
@@ -141,6 +142,12 @@ namespace FirstGame
         {
             ResetSimulationSpeed();
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        public void ReturnToMenu()
+        {
+            ResetSimulationSpeed();
+            SceneManager.LoadScene("Bootstrap");
         }
 
         private void ResetSimulationSpeed()
