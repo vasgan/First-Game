@@ -10,6 +10,9 @@ namespace FirstGameEditor
         [MenuItem("First Game/Validate Waves")]
         public static void Validate()
         {
+            WaveConfig normalConfig = AssetDatabase.LoadAssetAtPath<WaveConfig>("Assets/Game/Data/WaveConfig.asset");
+            EnemyConfig normalEnemy = AssetDatabase.LoadAssetAtPath<EnemyConfig>("Assets/Game/Data/EnemyConfig.asset");
+            GameObject normalPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Game/Prefabs/Enemy.prefab");
             WaveConfig config = ScriptableObject.CreateInstance<WaveConfig>();
             EnemyConfig enemy = ScriptableObject.CreateInstance<EnemyConfig>();
             EnemyConfig alternate = ScriptableObject.CreateInstance<EnemyConfig>();
@@ -20,6 +23,20 @@ namespace FirstGameEditor
             try
             {
                 Require(prefab != null, "Enemy prefab must exist");
+                Require(normalConfig != null && normalEnemy != null && normalPrefab != null,
+                    "Normal wave assets must exist");
+                Require(normalConfig.NormalWaveCount == 10,
+                    "Normal mode must define exactly ten waves");
+                int[] normalCounts = { 6, 8, 10, 11, 12, 14, 15, 16, 18, 20 };
+                int[] normalHealth = { 80, 90, 100, 110, 120, 130, 145, 160, 180, 200 };
+                int[] normalRewards = { 15, 18, 20, 22, 24, 26, 28, 30, 32, 35 };
+                for (int i = 0; i < normalConfig.NormalWaveCount; i++)
+                {
+                    WaveSettings normal = normalConfig.GetSettings(i + 1, false, normalEnemy, normalPrefab);
+                    Require(normal.EnemyCount == normalCounts[i] && normal.MaxHealth == normalHealth[i] &&
+                        normal.CompletionReward == normalRewards[i] && normal.SpawnInterval > 0f,
+                        "Normal wave " + (i + 1) + " must preserve its configured settings");
+                }
                 enemy.maxHealth = 100;
                 alternate.maxHealth = 200;
                 int[] expected = { 100, 107, 114, 123, 131 };

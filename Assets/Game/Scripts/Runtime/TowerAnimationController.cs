@@ -13,6 +13,7 @@ namespace FirstGame
         private Vector3 rest;
         private Vector3 baseScale;
         private bool facingLeft;
+        internal bool HasRequiredReferences => visual;
 
         public void Initialize(AttackAnimationStyle value)
         {

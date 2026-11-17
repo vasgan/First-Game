@@ -11,7 +11,9 @@ namespace FirstGame
     public abstract class TowerAttackBehaviour : MonoBehaviour, ITowerAttack
     {
         protected TowerAttackContext Context { get; private set; }
+        internal virtual bool HasRequiredReferences => true;
         public virtual void Initialize(TowerAttackContext context) => Context=context;
         public abstract void Attack(Enemy target);
+        internal virtual void StopEffects() => StopAllCoroutines();
     }
 }

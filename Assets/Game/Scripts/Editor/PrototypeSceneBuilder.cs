@@ -20,8 +20,14 @@ namespace FirstGameEditor
         private static readonly Color Panel = new(0.10f, 0.035f, 0.20f, 0.94f);
         private static Font font;
 
-        [MenuItem("First Game/Build Prototype")]
-        public static void BuildFromMenu() => BuildPrototype();
+        [MenuItem("First Game/Regenerate Prototype...")]
+        public static void BuildFromMenu()
+        {
+            if (EditorUtility.DisplayDialog("Regenerate Prototype",
+                    "This overwrites prototype scenes, prefabs, balance data, and project settings.",
+                    "Regenerate", "Cancel"))
+                BuildPrototype();
+        }
 
         public static void BuildPrototype()
         {
@@ -42,11 +48,24 @@ namespace FirstGameEditor
             Debug.Log("FIRST_GAME_BUILD_COMPLETE");
         }
 
+        [MenuItem("First Game/Build WebGL")]
         public static void BuildWebGL()
         {
+            WebGlBuildValidation.Validate();
+
+            var scenes = new List<string>();
+            foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+            {
+                if (scene.enabled)
+                    scenes.Add(scene.path);
+            }
+
+            if (scenes.Count == 0)
+                throw new BuildFailedException("Enable at least one scene in Build Profiles before building WebGL.");
+
             BuildPlayerOptions options = new()
             {
-                scenes = new[] { Root + "/Scenes/Bootstrap.unity", Root + "/Scenes/Level01.unity" },
+                scenes = scenes.ToArray(),
                 locationPathName = "Builds/WebGL",
                 target = BuildTarget.WebGL,
                 options = BuildOptions.None
@@ -101,6 +120,19 @@ namespace FirstGameEditor
             enemy.maxHealth=100; enemy.moveSpeed=1.5f; enemy.reward=10;
             wave = LoadOrCreate<WaveConfig>(Root + "/Data/WaveConfig.asset");
             wave.enemyCount=10; wave.spawnInterval=.8f; wave.completionReward=25;
+            wave.waves = new[]
+            {
+                new WaveDefinition { enemyCount = 6, healthMultiplier = .8f, spawnInterval = .9f, completionReward = 15 },
+                new WaveDefinition { enemyCount = 8, healthMultiplier = .9f, spawnInterval = .85f, completionReward = 18 },
+                new WaveDefinition { enemyCount = 10, healthMultiplier = 1f, spawnInterval = .8f, completionReward = 20 },
+                new WaveDefinition { enemyCount = 11, healthMultiplier = 1.1f, spawnInterval = .75f, completionReward = 22 },
+                new WaveDefinition { enemyCount = 12, healthMultiplier = 1.2f, spawnInterval = .7f, completionReward = 24 },
+                new WaveDefinition { enemyCount = 14, healthMultiplier = 1.3f, spawnInterval = .65f, completionReward = 26 },
+                new WaveDefinition { enemyCount = 15, healthMultiplier = 1.45f, spawnInterval = .6f, completionReward = 28 },
+                new WaveDefinition { enemyCount = 16, healthMultiplier = 1.6f, spawnInterval = .55f, completionReward = 30 },
+                new WaveDefinition { enemyCount = 18, healthMultiplier = 1.8f, spawnInterval = .5f, completionReward = 32 },
+                new WaveDefinition { enemyCount = 20, healthMultiplier = 2f, spawnInterval = .45f, completionReward = 35 }
+            };
             Sprite enemySprite=SpriteAt(Root+"/Art/Units/enemy1.png");
             Sprite tile=SpriteAt(Root+"/Art/Levels/tile1.png");
             GameObject projectile=new("Projectile");
@@ -111,11 +143,12 @@ namespace FirstGameEditor
             GameObject hf=SpriteObject("HealthFill",tile,new Color(.4f,1,.35f),12);hf.transform.SetParent(hb.transform);hf.transform.localPosition=new Vector3(-.5f,0);Enemy ec=enemyGo.AddComponent<Enemy>();Set(ec,"body",er);Set(ec,"healthFill",hf.transform);
             enemyPrefab=SavePrefab(enemyGo,Root+"/Prefabs/Enemy.prefab");
 
-            TowerConfig rapid=CreateTowerConfig("Rapid","Ice Tower","Fast projectiles",35,SpriteAt(Root+"/Art/Towers/rapid_tower.png"),new Color(.2f,1,.35f,.16f),AttackAnimationStyle.Pulse,new[]{new TowerLevelConfig{damage=12,attackRate=2.5f,range=2.8f,upgradeCost=55,projectileSpeed=11},new TowerLevelConfig{damage=18,attackRate=3.2f,range=3.2f,upgradeCost=0,projectileSpeed=13}});
+            TowerConfig rapid=CreateTowerConfig("Rapid","Ice Tower","Slows one enemy by 30% for 1.25s",35,SpriteAt(Root+"/Art/Towers/rapid_tower.png"),new Color(.2f,1,.35f,.16f),AttackAnimationStyle.Pulse,new[]{new TowerLevelConfig{damage=12,attackRate=2.5f,range=2.8f,upgradeCost=55,projectileSpeed=11},new TowerLevelConfig{damage=18,attackRate=3.2f,range=3.2f,upgradeCost=0,projectileSpeed=13}});
+            rapid.chillsTarget = true;
             rapid.towerPrefab=CreateTowerPrefab("RapidTower",rapid.icon,typeof(ProjectileAttack),projectilePrefab,Color.green);
-            TowerConfig cannon=CreateTowerConfig("Cannon","fireTower","Heavy area damage",55,SpriteAt(Root+"/Art/Towers/cannon_tower.png"),new Color(1,.65f,.1f,.16f),AttackAnimationStyle.Recoil,new[]{new TowerLevelConfig{damage=45,attackRate=.55f,range=2.4f,effectRadius=2.4f,upgradeCost=85,damageDelay=.12f},new TowerLevelConfig{damage=70,attackRate=.7f,range=2.8f,effectRadius=2.8f}});
+            TowerConfig cannon=CreateTowerConfig("Cannon","fireTower","Burst damage to all enemies in range",55,SpriteAt(Root+"/Art/Towers/cannon_tower.png"),new Color(1,.65f,.1f,.16f),AttackAnimationStyle.Recoil,new[]{new TowerLevelConfig{damage=45,attackRate=.55f,range=2.4f,effectRadius=2.4f,upgradeCost=85,damageDelay=.12f},new TowerLevelConfig{damage=70,attackRate=.7f,range=2.8f,effectRadius=2.8f}});
             cannon.towerPrefab=CreateTowerPrefab("CannonTower",cannon.icon,typeof(AreaAttack),null,new Color(1,.7f,.1f,.25f));
-            TowerConfig beam=CreateTowerConfig("Beam","ElectroTower","Instant energy beam",50,SpriteAt(Root+"/Art/Towers/beam_tower.png"),new Color(.1f,.8f,1,.16f),AttackAnimationStyle.Glow,new[]{new TowerLevelConfig{damage=24,attackRate=1.1f,range=3.5f,effectRadius=0,upgradeCost=75},new TowerLevelConfig{damage=38,attackRate=1.4f,range=4.1f,effectRadius=0}});
+            TowerConfig beam=CreateTowerConfig("Beam","ElectroTower","Instant beam hits one enemy",50,SpriteAt(Root+"/Art/Towers/beam_tower.png"),new Color(.1f,.8f,1,.16f),AttackAnimationStyle.Glow,new[]{new TowerLevelConfig{damage=24,attackRate=1.1f,range=3.5f,effectRadius=0,upgradeCost=75},new TowerLevelConfig{damage=38,attackRate=1.4f,range=4.1f,effectRadius=0}});
             beam.towerPrefab=CreateTowerPrefab("BeamTower",beam.icon,typeof(BeamAttack),null,Color.cyan);
             TowerConfig basic=CreateTowerConfig("Base","Base Tower","Single projectiles",25,SpriteAt(Root+"/Art/Units/tower1.png"),new Color(.4f,1,.5f,.16f),AttackAnimationStyle.Recoil,new[]{new TowerLevelConfig{damage=5,attackRate=1f,range=4.1f,upgradeCost=0,projectileSpeed=9f,effectRadius=0}});
             basic.towerPrefab=CreateTowerPrefab("BaseTower",basic.icon,typeof(ProjectileAttack),projectilePrefab,Color.yellow);
@@ -137,7 +170,7 @@ namespace FirstGameEditor
             TowerTargeting targeting=root.AddComponent<TowerTargeting>();Animator animator=root.AddComponent<Animator>();TowerAnimationController anim=root.AddComponent<TowerAnimationController>();Set(anim,"visual",body.transform);Set(anim,"animator",animator);
             TowerAttackBehaviour attack=(TowerAttackBehaviour)root.AddComponent(attackType);
             if(attack is ProjectileAttack)Set(attack,"projectilePrefab",projectile);
-            if(attack is BeamAttack beam){LineRenderer line=root.AddComponent<LineRenderer>();line.positionCount=2;line.startWidth=.09f;line.endWidth=.03f;line.material=new Material(Shader.Find("Sprites/Default"));line.startColor=effectColor;line.endColor=Color.white;line.enabled=false;Set(beam,"beam",line);}
+            if(attack is BeamAttack beam){LineRenderer line=root.AddComponent<LineRenderer>();line.positionCount=2;line.startWidth=.09f;line.endWidth=.03f;line.material=new Material(Shader.Find("Sprites/Default"));line.startColor=effectColor;line.endColor=Color.white;line.sortingOrder=20;line.enabled=false;Set(beam,"beam",line);}
             if(attack is AreaAttack area){GameObject pulse=SpriteObject("Pulse",circle,effectColor,15);pulse.transform.SetParent(root.transform);pulse.transform.localPosition=Vector3.zero;pulse.SetActive(false);Set(area,"pulse",pulse.GetComponent<SpriteRenderer>());}
             TowerController controller=root.AddComponent<TowerController>();Set(controller,"body",body);Set(controller,"firePoint",fire);Set(controller,"targeting",targeting);Set(controller,"rangeView",rv);Set(controller,"animationController",anim);Set(controller,"attackBehaviour",attack);
             TowerSpineImporter.ConfigureTower(root, name);
@@ -249,6 +282,7 @@ namespace FirstGameEditor
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
             RectTransform safe = Rect("SafeArea", canvas.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            safe.gameObject.AddComponent<SafeAreaLayout>();
             GameObject top = ImagePanel("TopBar", safe, Panel, new Vector2(0.04f, 0.91f), new Vector2(0.96f, 0.98f));
             Text gold = TextUI("Gold", top.transform, "Gold: 100", 38, TextAnchor.MiddleLeft,
                 new Vector2(0.03f, 0), new Vector2(0.38f, 1));
@@ -264,6 +298,10 @@ namespace FirstGameEditor
 
             Button start = ButtonUI("StartWave", safe, "START WAVE", new Color(0.45f, 0.88f, 0.25f),
                 new Vector2(0.18f, 0.04f), new Vector2(0.82f, 0.115f));
+            Button pause = ButtonUI("Pause", safe, "PAUSE", new Color(0.35f, 0.45f, 0.7f),
+                new Vector2(.65f,.785f), new Vector2(.80f,.835f));
+            Button speed = ButtonUI("Speed", safe, "SPEED ×1", new Color(0.45f, 0.65f, 0.35f),
+                new Vector2(.81f,.785f), new Vector2(.96f,.835f));
 
             GameObject buildMenu = ImagePanel("BuildMenu", safe, Panel, new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.40f));
             TextUI("BuildTitle", buildMenu.transform, "CHOOSE TOWER", 34, TextAnchor.MiddleCenter,new Vector2(0,0.72f),new Vector2(1,1));
@@ -293,17 +331,42 @@ namespace FirstGameEditor
             Button restart = ButtonUI("Restart", result.transform, "PLAY AGAIN", new Color(0.63f, 0.36f, 0.93f),
                 new Vector2(0.18f, 0.35f), new Vector2(0.82f, 0.43f));
 
+            GameObject tutorial = ImagePanel("TutorialPanel", safe, new Color(0.08f, 0.12f, 0.24f, 0.94f),
+                new Vector2(0.04f, 0.42f), new Vector2(0.96f, 0.58f));
+            tutorial.GetComponent<Image>().raycastTarget = false;
+            Text tutorialText = TextUI("TutorialText", tutorial.transform, "", 28, TextAnchor.MiddleCenter,
+                new Vector2(0.06f, 0.38f), new Vector2(0.94f, 0.95f));
+            tutorialText.raycastTarget = false;
+            Button tutorialRepeat = ButtonUI("TutorialRepeat", tutorial.transform, "REPEAT HINTS", new Color(0.25f, 0.55f, 0.9f),
+                new Vector2(0.06f, 0.08f), new Vector2(0.49f, 0.32f));
+            Button tutorialSkip = ButtonUI("TutorialSkip", tutorial.transform, "SKIP", new Color(0.45f, 0.45f, 0.5f),
+                new Vector2(0.51f, 0.08f), new Vector2(0.94f, 0.32f));
+
+            GameObject pausePanel = ImagePanel("PausePanel", safe, new Color(0.06f, 0.015f, 0.14f, 0.97f),
+                new Vector2(0.18f, 0.37f), new Vector2(0.82f, 0.63f));
+            TextUI("PauseTitle", pausePanel.transform, "PAUSED", 42, TextAnchor.MiddleCenter,
+                new Vector2(0.06f, 0.38f), new Vector2(0.94f, 0.95f));
+            Button resume = ButtonUI("Resume", pausePanel.transform, "RESUME", new Color(0.25f, 0.55f, 0.9f),
+                new Vector2(0.08f, 0.08f), new Vector2(0.47f, 0.30f));
+            Button pauseSpeed = ButtonUI("PauseSpeed", pausePanel.transform, "SPEED ×1", new Color(0.45f, 0.65f, 0.35f),
+                new Vector2(0.53f, 0.08f), new Vector2(0.92f, 0.30f));
+
             GameUI ui = canvas.gameObject.AddComponent<GameUI>();
             Set(ui, "goldText", gold); Set(ui, "healthText", health); Set(ui, "waveText", waveLabel);
             Set(ui, "enemiesText", enemies); Set(ui, "startWaveButton", start); Set(ui, "actionPanel", action);
             Set(ui, "testProfileButton", testProfile);
+            Set(ui, "pauseButton", pause); Set(ui, "speedButton", speed); Set(ui, "pausePanel", pausePanel);
+            Set(ui, "resumeButton", resume); Set(ui, "pauseSpeedButton", pauseSpeed);
             Set(ui, "actionTitle", actionTitle); Set(ui, "actionDetails", actionDetails);
             Set(ui, "actionButton", actionButton); Set(ui, "actionButtonText", actionButtonText);
             Set(ui,"towerCatalog",catalog);Set(ui,"buildMenu",buildMenu);SetArray(ui,"towerButtons",towerButtons);SetArray(ui,"towerButtonTexts",towerTexts);
             Set(ui, "resultPanel", result); Set(ui, "resultText", resultText); Set(ui, "restartButton", restart);
+            Set(ui, "tutorialPanel", tutorial); Set(ui, "tutorialText", tutorialText);
+            Set(ui, "tutorialRepeatButton", tutorialRepeat); Set(ui, "tutorialSkipButton", tutorialSkip);
             action.SetActive(false);
             buildMenu.SetActive(false);
             result.SetActive(false);
+            pausePanel.SetActive(false);
             return ui;
         }
 

@@ -31,6 +31,7 @@ namespace FirstGame
         public int buildCost = 50;
         public TargetingRule targetingRule;
         public AttackAnimationStyle animationStyle;
+        public bool chillsTarget;
         public Color rangeColor = new(0.3f, 1f, 0.5f, 0.16f);
         public AudioClip attackSound;
         public AudioClip hitSound;

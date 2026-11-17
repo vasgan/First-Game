@@ -49,6 +49,8 @@ namespace FirstGame
         [Header("Test profile progression")]
         [Min(0f)] public float testHealthGrowthPercent = 7f;
 
+        public int NormalWaveCount => waves?.Length ?? 0;
+
         public WaveSettings GetSettings(int waveNumber, bool isTestProfile,
             EnemyConfig defaultEnemy, GameObject defaultPrefab)
         {
@@ -60,7 +62,7 @@ namespace FirstGame
             if (isTestProfile)
                 multiplier *= Math.Pow(1d + Math.Max(0d, testHealthGrowthPercent) / 100d, index);
             int health = (int)Math.Max(1d, Math.Min(int.MaxValue,
-                Math.Round(enemy.maxHealth * multiplier, MidpointRounding.AwayFromZero)));
+                Math.Round((enemy ? enemy.maxHealth : 1) * multiplier, MidpointRounding.AwayFromZero)));
             return new WaveSettings(Mathf.Max(1, definition?.enemyCount ?? enemyCount), enemy, prefab,
                 health, Mathf.Max(0.01f, definition?.spawnInterval ?? spawnInterval),
                 Mathf.Max(0, definition?.completionReward ?? completionReward));

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FirstGame.TowerConfig
   id: cannon
   displayName: fireTower
-  description: Heavy area damage
+  description: Burst damage to all enemies in range
   icon: {fileID: 21300000, guid: f9143bcdd537944c4a3e8ea0cafa4190, type: 3}
   towerPrefab: {fileID: 3625656962548305214, guid: c4cbbc27115a849c98ef2d0be0a5927f, type: 3}
   buildCost: 55
