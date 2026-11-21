@@ -151,10 +151,15 @@ namespace FirstGame
                 SetCornerTile(tiles, route[point] - route[point - 1], route[point + 1] - route[point], route[point], palette);
 
             foreach ((Vector2Int key, Sprite sprite) in tiles)
-                CreateTile("RouteTile", new Vector2(key.x, key.y) * .5f, sprite, root);
+                CreateTile("RouteTile", new Vector2(key.x, key.y) * .5f, sprite, root, Color.white);
         }
 
-        private static void SetCornerTile(Dictionary<Vector2Int, Sprite> tiles, Vector2 incoming, Vector2 outgoing, Vector2 position, RouteTilePalette palette)
+        private static void SetCornerTile(
+            Dictionary<Vector2Int, Sprite> tiles,
+            Vector2 incoming,
+            Vector2 outgoing,
+            Vector2 position,
+            RouteTilePalette palette)
         {
             Vector2 incomingDirection = incoming.normalized;
             Vector2 outgoingDirection = outgoing.normalized;
@@ -165,14 +170,17 @@ namespace FirstGame
 
             Vector2 innerOffset = -outerOffset;
             SetTile(tiles, position + outerOffset * BorderOffset, SelectCorner(palette, false, outerOffset));
-            SetTile(tiles, position + innerOffset * BorderOffset, SelectCorner(palette, true, innerOffset));
+            Vector2 innerPosition = position + innerOffset * BorderOffset;
+            SetTile(tiles, innerPosition, SelectCorner(palette, true, innerOffset));
         }
 
         private static void SetTile(Dictionary<Vector2Int, Sprite> tiles, Vector2 position, Sprite sprite)
         {
-            Vector2Int key = new(Mathf.RoundToInt(position.x * 2f), Mathf.RoundToInt(position.y * 2f));
-            tiles[key] = sprite;
+            tiles[ToTileKey(position)] = sprite;
         }
+
+        private static Vector2Int ToTileKey(Vector2 position) =>
+            new(Mathf.RoundToInt(position.x * 2f), Mathf.RoundToInt(position.y * 2f));
 
         private static void SetSegmentBorder(
             Dictionary<Vector2Int, Sprite> tiles,
@@ -186,10 +194,58 @@ namespace FirstGame
             Sprite sprite)
         {
             if (IsInnerCornerBorder(route, segment, step, count, direction, side)) return;
+            if (TryGetInnerAdjacentShortening(route, segment, step, count, direction, side, out Vector2 shortening))
+            {
+                SetTile(tiles, position + shortening * BorderOffset, sprite);
+                return;
+            }
             SetTile(tiles, position, sprite);
         }
 
-        private static bool IsInnerCornerBorder(Vector2[] route, int segment, int step, int count, Vector2 direction, Vector2 side)
+        private static bool TryGetInnerAdjacentShortening(
+            Vector2[] route,
+            int segment,
+            int step,
+            int count,
+            Vector2 direction,
+            Vector2 side,
+            out Vector2 shortening)
+        {
+            shortening = Vector2.zero;
+            Vector2 incoming;
+            Vector2 outgoing;
+            if (step == 1 && segment > 0)
+            {
+                incoming = (route[segment] - route[segment - 1]).normalized;
+                outgoing = direction;
+                shortening = direction;
+            }
+            else if (step == count - 1 && segment < route.Length - 2)
+            {
+                incoming = direction;
+                outgoing = (route[segment + 2] - route[segment + 1]).normalized;
+                shortening = -direction;
+            }
+            else
+            {
+                return false;
+            }
+
+            Vector2 outerOffset = new(
+                Mathf.Sign(incoming.x - outgoing.x),
+                Mathf.Sign(incoming.y - outgoing.y));
+            bool isInnerBorder = Vector2.Dot(side, outerOffset) < 0f;
+            if (!isInnerBorder) shortening = Vector2.zero;
+            return isInnerBorder;
+        }
+
+        private static bool IsInnerCornerBorder(
+            Vector2[] route,
+            int segment,
+            int step,
+            int count,
+            Vector2 direction,
+            Vector2 side)
         {
             Vector2 incoming;
             Vector2 outgoing;
@@ -239,14 +295,14 @@ namespace FirstGame
                    palette.roadBorderOuterCornerBottomLeft && palette.roadBorderOuterCornerBottomRight;
         }
 
-        private static void CreateTile(string name, Vector2 position, Sprite sprite, Transform root)
+        private static void CreateTile(string name, Vector2 position, Sprite sprite, Transform root, Color color)
         {
             GameObject tile = new(name);
             tile.transform.SetParent(root);
             tile.transform.position = position;
             SpriteRenderer renderer = tile.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
-            renderer.color = Color.white;
+            renderer.color = color;
             renderer.sortingOrder = -2;
         }
 
