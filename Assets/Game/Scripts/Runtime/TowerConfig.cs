@@ -20,6 +20,16 @@ namespace FirstGame
         public float damageDelay;
     }
 
+    /// <summary>A mutually exclusive, player-selected upgrade for a tower.</summary>
+    [Serializable]
+    public sealed class TowerSpecializationConfig
+    {
+        public string displayName;
+        [TextArea] public string description;
+        public int cost;
+        public TowerLevelConfig stats = new();
+    }
+
     [CreateAssetMenu(menuName = "First Game/Tower Config")]
     public sealed class TowerConfig : ScriptableObject
     {
@@ -38,5 +48,6 @@ namespace FirstGame
         public GameObject attackEffectPrefab;
         public GameObject hitEffectPrefab;
         public TowerLevelConfig[] levels = { new(), new() };
+        public TowerSpecializationConfig[] specializations = Array.Empty<TowerSpecializationConfig>();
     }
 }

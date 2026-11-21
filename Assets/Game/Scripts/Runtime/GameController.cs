@@ -22,6 +22,20 @@ namespace FirstGame
         public bool IsTestProfile { get; private set; }
         public int WaveNumber { get; private set; }
         public string WaveConfigurationError { get; private set; }
+        // Test Profile deliberately exists only in the Editor and development builds.
+        // A release player must never expose a control that restarts a live match.
+        public static bool IsTestProfileAvailable
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return true;
+#else
+                return IsTestProfileAvailableInPlayer(Debug.isDebugBuild);
+#endif
+            }
+        }
+        public static bool IsTestProfileAvailableInPlayer(bool isDevelopmentBuild) => isDevelopmentBuild;
         public float NextWaveSeconds => Mathf.Max(0f, nextWaveAt - Time.time);
         public bool IsWaitingForWave { get; private set; }
         public bool IsPaused { get; private set; }
@@ -31,7 +45,8 @@ namespace FirstGame
         {
             Instance = this;
             GameAudio.EnsureInstance();
-            IsTestProfile = selectedTestProfile;
+            LevelLayoutApplier.Apply(LevelSelection.SelectedLevel, waveController);
+            IsTestProfile = IsTestProfileAvailable && selectedTestProfile;
             ResetSimulationSpeed();
             Application.targetFrameRate = 60;
         }
@@ -47,7 +62,7 @@ namespace FirstGame
             (IsTestProfile || BuiltTowerCount > 0);
         public void ToggleTestProfile()
         {
-            if (!CanInteract) return;
+            if (!IsTestProfileAvailable || !CanInteract) return;
             selectedTestProfile = !IsTestProfile;
             Restart();
         }
@@ -128,7 +143,7 @@ namespace FirstGame
 
             ResetSimulationSpeed();
             State = won ? GameState.Won : GameState.Lost;
-            if (won) LocalProgress.MarkCompleted(1);
+            if (won) LocalProgress.MarkCompleted(LevelSelection.SelectedLevelIndex);
             GameAudio.PlayResult(won);
             waveController.StopWave();
             foreach (TowerController tower in FindObjectsByType<TowerController>(FindObjectsSortMode.None))

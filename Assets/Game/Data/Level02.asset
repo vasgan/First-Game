@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b11b54b0aeab4a66a832aa28c8be9f8, type: 3}
+  m_Name: Level02
+  m_EditorClassIdentifier: Assembly-CSharp::FirstGame.LevelDefinition
+  levelIndex: 2
+  sceneName: Level01
+  displayName: LEVEL 2
+  waveConfig: {fileID: 11400000, guid: e5975ff556bef4419bf30821044d7617, type: 2}
+  routePalette:
+    roadCenterHorizontal: {fileID: 7608917520265177533, guid: 7ebce17a52dc0403b92d0e1db4a12a92, type: 3}
+    roadCenterVertical: {fileID: -6050151607839641960, guid: 6a3ddf36d5f6f4c1b9457ca045512daf, type: 3}
+    roadBorderTopHorizontal: {fileID: 7116140281814189272, guid: ab19fd3adb506456e85d5c907a177bd6, type: 3}
+    roadBorderBottomHorizontal: {fileID: -3240700972887407968, guid: 49df1b80719b044cda960380ab20faa7, type: 3}
+    roadBorderLeftVertical: {fileID: 531608341465453853, guid: 3aa3d0c0ea8554931a820c26711daf4b, type: 3}
+    roadBorderRightVertical: {fileID: -8947403240267127135, guid: 71159a9acd5884458bd98bee854e4e24, type: 3}
+    roadBorderInnerCornerTopLeft: {fileID: -6633134440292738553, guid: 41e9ba70f716044b195b6f569bd23852, type: 3}
+    roadBorderInnerCornerTopRight: {fileID: -2133171346852259888, guid: 73904041102274b9db4ca4a5d84dc939, type: 3}
+    roadBorderInnerCornerBottomLeft: {fileID: 9196519304461936116, guid: eabba88619bf041408a6004d0df3cdc0, type: 3}
+    roadBorderInnerCornerBottomRight: {fileID: 2884724266975860007, guid: ab8e59590771049e48f465b2240b7b54, type: 3}
+    roadBorderOuterCornerTopLeft: {fileID: 4642280301769562711, guid: 8d13f72aa866747949f152cccf6ae455, type: 3}
+    roadBorderOuterCornerTopRight: {fileID: 6087822678326991061, guid: ddf37ddbeff854c928c653db8151d7f2, type: 3}
+    roadBorderOuterCornerBottomLeft: {fileID: 4272767634084766631, guid: 1d7a060a23303413083efefb89230da6, type: 3}
+    roadBorderOuterCornerBottomRight: {fileID: 6152327850878107428, guid: 3027ae6b13a4043b1ad1c5a3b75594ac, type: 3}
+  route:
+  - {x: 3.2, y: -9}
+  - {x: 3.2, y: -5.8}
+  - {x: -2.5, y: -5.8}
+  - {x: -2.5, y: -1.4}
+  - {x: 2.4, y: -1.4}
+  - {x: 2.4, y: 2.7}
+  - {x: -1.8, y: 2.7}
+  - {x: -1.8, y: 8.8}
+  buildSpots:
+  - {x: 1.1, y: -7}
+  - {x: -0.2, y: -3.6}
+  - {x: 0.2, y: 0.5}
+  - {x: -3.6, y: 4.8}

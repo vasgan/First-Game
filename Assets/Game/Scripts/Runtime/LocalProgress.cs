@@ -8,7 +8,8 @@ namespace FirstGame
         private const int CurrentVersion = 1;
         private const string VersionKey = "firstgame.progress.version";
         private const string CompletedLevelKey = "firstgame.progress.completedLevel";
-        private const int LevelCount = 1;
+        private static int LevelCount => Mathf.Max(1, LevelSelection.Catalog && LevelSelection.Catalog.levels != null
+            ? LevelSelection.Catalog.levels.Length : 1);
 
         public static int CompletedLevel { get; private set; }
 
@@ -40,8 +41,9 @@ namespace FirstGame
             PlayerPrefs.Save();
         }
 
-        public static string GetLevelStatus(int levelIndex) =>
-            levelIndex <= CompletedLevel ? "COMPLETE" : IsUnlocked(levelIndex) ? "AVAILABLE" : "LOCKED";
+        public static string GetLevelStatus(int levelIndex) => levelIndex <= CompletedLevel
+            ? Localization.T("COMPLETE", "ПРОЙДЕН")
+            : IsUnlocked(levelIndex) ? Localization.T("AVAILABLE", "ДОСТУПЕН") : Localization.T("LOCKED", "ЗАБЛОКИРОВАН");
 
         public static bool TryNormalize(int version, int completedLevel, out int normalizedCompletedLevel)
         {

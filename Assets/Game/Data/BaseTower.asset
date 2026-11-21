@@ -35,3 +35,30 @@ MonoBehaviour:
     projectileSpeed: 9
     effectRadius: 0
     damageDelay: 0
+  specializations:
+  - displayName: Longshot
+    description: High damage and long range for armored targets.
+    cost: 45
+    stats:
+      sprite: {fileID: 21300000, guid: f49037e2dfc3940728b80fa9a08f0267, type: 3}
+      animatorController: {fileID: 0}
+      damage: 11
+      attackRate: 0.8
+      range: 6
+      upgradeCost: 0
+      projectileSpeed: 11
+      effectRadius: 0
+      damageDelay: 0
+  - displayName: Volley
+    description: Fast fire for dense groups near the route.
+    cost: 45
+    stats:
+      sprite: {fileID: 21300000, guid: f49037e2dfc3940728b80fa9a08f0267, type: 3}
+      animatorController: {fileID: 0}
+      damage: 4
+      attackRate: 2.8
+      range: 3.2
+      upgradeCost: 0
+      projectileSpeed: 10
+      effectRadius: 0
+      damageDelay: 0

@@ -34,7 +34,7 @@ namespace FirstGameEditor
                 {
                     WaveSettings normal = normalConfig.GetSettings(i + 1, false, normalEnemy, normalPrefab);
                     Require(normal.EnemyCount == normalCounts[i] && normal.MaxHealth == normalHealth[i] &&
-                        normal.CompletionReward == normalRewards[i] && normal.SpawnInterval > 0f,
+                        normal.CompletionReward == normalRewards[i] && normal.MoveSpeed == 1.5f && normal.SpawnInterval > 0f,
                         "Normal wave " + (i + 1) + " must preserve its configured settings");
                 }
                 enemy.maxHealth = 100;
@@ -53,12 +53,12 @@ namespace FirstGameEditor
                 {
                     new WaveDefinition { enemyCount = 3, enemyConfig = alternate,
                         enemyPrefab = alternatePrefab, healthMultiplier = 1.5f,
-                        spawnInterval = 0.25f, completionReward = 50 },
+                        spawnInterval = 0.25f, completionReward = 50, moveSpeed = 3.5f },
                     new WaveDefinition { enemyCount = 7, healthMultiplier = 2f }
                 };
                 WaveSettings first = config.GetSettings(1, true, enemy, prefab);
                 Require(first.EnemyCount == 3 && first.EnemyConfig == alternate &&
-                    first.EnemyPrefab == alternatePrefab && first.MaxHealth == 300 &&
+                    first.EnemyPrefab == alternatePrefab && first.MaxHealth == 300 && first.MoveSpeed == 3.5f &&
                     first.SpawnInterval == 0.25f && first.CompletionReward == 50,
                     "Per-wave settings must select count, type, health, timing and reward");
                 WaveSettings second = config.GetSettings(2, true, enemy, prefab);
@@ -67,6 +67,27 @@ namespace FirstGameEditor
                     "Default enemy and test growth must combine with per-wave settings");
                 Require(config.GetSettings(3, true, enemy, prefab).EnemyCount == 10,
                     "Endless waves must fall back to default settings");
+                config.waves = new[]
+                {
+                    new WaveDefinition
+                    {
+                        completionReward = 42,
+                        groups = new[]
+                        {
+                            new WaveGroupDefinition { enemyCount = 2, enemyConfig = enemy, enemyPrefab = prefab,
+                                maxHealth = 90, moveSpeed = 1.25f, spawnInterval = .2f },
+                            new WaveGroupDefinition { enemyCount = 3, enemyConfig = alternate, enemyPrefab = alternatePrefab,
+                                maxHealth = 140, moveSpeed = 2f, spawnInterval = .4f }
+                        }
+                    }
+                };
+                WaveSettings grouped = config.GetSettings(1, false, enemy, prefab);
+                Require(grouped.EnemyCount == 5 && grouped.Groups.Length == 2 && grouped.CompletionReward == 42,
+                    "A wave must total its ordered groups and preserve its reward");
+                Require(grouped.Groups[0].EnemyCount == 2 && grouped.Groups[0].EnemyPrefab == prefab &&
+                    grouped.Groups[0].MaxHealth == 90 && grouped.Groups[1].EnemyCount == 3 &&
+                    grouped.Groups[1].EnemyPrefab == alternatePrefab && grouped.Groups[1].MaxHealth == 140,
+                    "Each group must keep its prefab, order, count and settings");
                 Require(enemy.maxHealth == 100 && alternate.maxHealth == 200,
                     "Wave generation must not modify shared enemy assets");
                 instance = UnityEngine.Object.Instantiate(prefab);

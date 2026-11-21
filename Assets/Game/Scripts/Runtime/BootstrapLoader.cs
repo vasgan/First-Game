@@ -12,6 +12,7 @@ namespace FirstGame
         private void Start()
         {
             LocalProgress.Load();
+            Localization.Load();
             CreateMenu();
         }
 
@@ -29,16 +30,35 @@ namespace FirstGame
 
             Image panel = CreateImage("Panel", canvas.transform, PanelColor, new Vector2(.08f, .20f), new Vector2(.92f, .80f));
             CreateText("Title", panel.transform, font, "GLOW PATH DEFENSE", 58, new Vector2(.05f, .76f), new Vector2(.95f, .94f));
-            CreateText("Subtitle", panel.transform, font, "SELECT A LEVEL", 28, new Vector2(.05f, .64f), new Vector2(.95f, .74f));
+            CreateText("Subtitle", panel.transform, font, Localization.T("SELECT A LEVEL", "ВЫБЕРИТЕ УРОВЕНЬ"), 28, new Vector2(.05f, .64f), new Vector2(.95f, .74f));
 
-            Button level = CreateButton("Level01", panel.transform, font,
-                "LEVEL 1\n" + LocalProgress.GetLevelStatus(1), new Color(.38f, .66f, .93f),
-                new Vector2(.08f, .38f), new Vector2(.92f, .59f));
-            level.interactable = LocalProgress.IsUnlocked(1);
-            level.onClick.AddListener(() => SceneManager.LoadScene("Level01"));
+            LevelCatalog catalog = LevelSelection.Catalog;
+            int levelCount = catalog && catalog.levels != null ? catalog.levels.Length : 0;
+            for (int index = 0; index < levelCount; index++)
+            {
+                LevelDefinition definition = catalog.levels[index];
+                if (!definition) continue;
+                float max = .68f - index * .19f;
+                float min = max - .15f;
+                int levelIndex = definition.levelIndex;
+                Button level = CreateButton("Level" + levelIndex.ToString("00"), panel.transform, font,
+                    Localization.T(definition.displayName, definition.displayName == "LEVEL 1" ? "УРОВЕНЬ 1" : "УРОВЕНЬ 2") + "\n" + LocalProgress.GetLevelStatus(levelIndex),
+                    new Color(.38f, .66f, .93f), new Vector2(.08f, min), new Vector2(.92f, max));
+                level.interactable = LocalProgress.IsUnlocked(levelIndex);
+                level.onClick.AddListener(() => StartLevel(levelIndex));
+            }
             CreateText("Progress", panel.transform, font,
-                $"Local progress: {LocalProgress.CompletedLevel}/1 complete", 23,
-                new Vector2(.08f, .20f), new Vector2(.92f, .31f));
+                Localization.T($"Local progress: {LocalProgress.CompletedLevel}/{levelCount} complete", $"Локальный прогресс: {LocalProgress.CompletedLevel}/{levelCount} пройден"), 23,
+                new Vector2(.08f, .22f), new Vector2(.92f, .30f));
+            Button language = CreateButton("Language", panel.transform, font, Localization.LanguageLabel,
+                new Color(.55f, .38f, .75f), new Vector2(.30f, .07f), new Vector2(.70f, .16f));
+            language.onClick.AddListener(() => { Localization.Toggle(); SceneManager.LoadScene("Bootstrap"); });
+        }
+
+        private static void StartLevel(int levelIndex)
+        {
+            if (!LevelSelection.Select(levelIndex)) return;
+            SceneManager.LoadScene(LevelSelection.SelectedLevel.sceneName);
         }
 
         private static Image CreateImage(string name, Transform parent, Color color, Vector2 min, Vector2 max)
@@ -53,7 +73,11 @@ namespace FirstGame
 
         private static Text CreateText(string name, Transform parent, Font font, string value, int size, Vector2 min, Vector2 max)
         {
-            Text text = CreateImage(name, parent, Color.clear, min, max).gameObject.AddComponent<Text>();
+            GameObject go = new(name, typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(parent, false);
+            RectTransform rect = (RectTransform)go.transform;
+            rect.anchorMin = min; rect.anchorMax = max; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            Text text = go.GetComponent<Text>();
             text.font = font; text.text = value; text.fontSize = size; text.alignment = TextAnchor.MiddleCenter;
             text.color = Color.white; text.resizeTextForBestFit = true; text.resizeTextMinSize = 18; text.raycastTarget = false;
             return text;

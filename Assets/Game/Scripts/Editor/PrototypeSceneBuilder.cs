@@ -199,13 +199,14 @@ namespace FirstGameEditor
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             Sprite backgroundSprite = SpriteAt(Root + "/Art/Levels/background.png");
-            Sprite tileSprite = SpriteAt(Root + "/Art/Levels/tile1.png");
             Sprite spotSprite = SpriteAt(Root + "/Art/Levels/tower_place.png");
             Sprite towerSprite = SpriteAt(Root + "/Art/Units/tower1.png");
 
             Camera camera = new GameObject("Main Camera").AddComponent<Camera>();
             camera.tag = "MainCamera"; camera.orthographic = true; camera.orthographicSize = 9.6f;
-            camera.transform.position = new Vector3(0, 0, -10); camera.backgroundColor = DeepPurple;
+            camera.transform.position = new Vector3(0, 0, -10);
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = LevelLayoutApplier.BackgroundEdgeColor;
 
             GameObject background = SpriteObject("Background", backgroundSprite, Color.white, -20);
             background.transform.localScale = Vector3.one;
@@ -221,7 +222,6 @@ namespace FirstGameEditor
             {
                 route[i] = new GameObject($"Waypoint_{i:00}").transform;
                 route[i].SetParent(routeRoot); route[i].position = points[i];
-                if (i > 0) DrawPath(points[i - 1], points[i], tileSprite, routeRoot);
             }
 
             GameObject baseGlow = SpriteObject("Base", towerSprite, new Color(0.25f, 0.9f, 1f), 5);
@@ -252,22 +252,6 @@ namespace FirstGameEditor
             Set(controller, "waveController", wave); Set(controller, "gameUI", ui);
 
             EditorSceneManager.SaveScene(scene, Root + "/Scenes/Level01.unity");
-        }
-
-        private static void DrawPath(Vector2 start, Vector2 end, Sprite sprite, Transform root)
-        {
-            float distance = Vector2.Distance(start, end);
-            int count = Mathf.CeilToInt(distance / 0.82f);
-            for (int i = 0; i <= count; i++)
-            {
-                Vector2 position = Vector2.Lerp(start, end, (float)i / count);
-                GameObject shadow = SpriteObject("PathShadow", sprite, new Color(0.25f, 0.08f, 0.38f), -3);
-                shadow.transform.SetParent(root); shadow.transform.position = position + new Vector2(0, -0.13f);
-                shadow.transform.localScale = Vector3.one * 1.07f;
-                GameObject tile = SpriteObject("PathTile", sprite, Purple, -2);
-                tile.transform.SetParent(root); tile.transform.position = position;
-                tile.transform.localScale = Vector3.one * 1.04f;
-            }
         }
 
         private static GameUI BuildUI(TowerCatalog catalog)

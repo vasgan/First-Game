@@ -1,0 +1,109 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02067c43eb6744c729852367a01cf403, type: 3}
+  m_Name: Level02WaveConfig
+  m_EditorClassIdentifier: Assembly-CSharp::FirstGame.WaveConfig
+  enemyCount: 10
+  spawnInterval: 0.72
+  completionReward: 25
+  waves:
+  - enemyCount: 7
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 90
+    moveSpeed: 1.65
+    spawnInterval: 0.82
+    completionReward: 18
+    groups: []
+  - enemyCount: 9
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 105
+    moveSpeed: 1.65
+    spawnInterval: 0.78
+    completionReward: 21
+    groups: []
+  - enemyCount: 11
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 120
+    moveSpeed: 1.65
+    spawnInterval: 0.74
+    completionReward: 24
+    groups: []
+  - enemyCount: 12
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 135
+    moveSpeed: 1.65
+    spawnInterval: 0.7
+    completionReward: 27
+    groups: []
+  - enemyCount: 14
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 150
+    moveSpeed: 1.65
+    spawnInterval: 0.65999997
+    completionReward: 30
+    groups: []
+  - enemyCount: 15
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 165
+    moveSpeed: 1.65
+    spawnInterval: 0.62
+    completionReward: 33
+    groups: []
+  - enemyCount: 17
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 185
+    moveSpeed: 1.65
+    spawnInterval: 0.58
+    completionReward: 36
+    groups: []
+  - enemyCount: 19
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 205
+    moveSpeed: 1.65
+    spawnInterval: 0.54
+    completionReward: 39
+    groups: []
+  - enemyCount: 21
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 225
+    moveSpeed: 1.65
+    spawnInterval: 0.5
+    completionReward: 42
+    groups: []
+  - enemyCount: 24
+    enemyConfig: {fileID: 0}
+    enemyPrefab: {fileID: 0}
+    healthMultiplier: 1
+    maxHealth: 250
+    moveSpeed: 1.65
+    spawnInterval: 0.46
+    completionReward: 45
+    groups: []
+  testHealthGrowthPercent: 7

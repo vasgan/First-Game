@@ -14,6 +14,7 @@ namespace FirstGame
         [SerializeField] private Button testProfileButton;
         [SerializeField] private Button pauseButton;
         [SerializeField] private Button speedButton;
+        [SerializeField] private Button languageButton;
         [SerializeField] private GameObject pausePanel;
         [SerializeField] private Button resumeButton;
         [SerializeField] private Button pauseSpeedButton;
@@ -35,6 +36,8 @@ namespace FirstGame
         [SerializeField] private Text actionDetails;
         [SerializeField] private Button actionButton;
         [SerializeField] private Text actionButtonText;
+        [SerializeField] private Button specializationButton;
+        [SerializeField] private Text specializationButtonText;
         [SerializeField] private Button sellButton;
         [SerializeField] private Text sellButtonText;
         [SerializeField] private Button targetingButton;
@@ -64,23 +67,29 @@ namespace FirstGame
         private BuildSpot selectedSpot;
         private int selectionFrame;
         private int tutorialStep;
+        private int previewWaveNumber = -1;
+        private bool previewIsTestProfile;
+        private string cachedWavePreview;
 
         public void Initialize(GameController controller, WaveController waveController)
         {
             game = controller;
             wave = waveController;
+            Localization.Load();
             EnsureSafeAreaLayout();
             EnsureTutorialUi();
             EnsureTimeControlUi();
             EnsureAudioSettingsUi();
             EnsureMenuButton();
+            EnsureLanguageButton();
             EnsureTowerActionUi();
             game.Economy.Changed += Refresh;
             game.BaseHealth.Changed += Refresh;
             startWaveButton.onClick.AddListener(game.StartWave);
-            testProfileButton.onClick.AddListener(game.ToggleTestProfile);
+            ConfigureTestProfileControl();
             pauseButton.onClick.AddListener(game.TogglePause);
             speedButton.onClick.AddListener(game.ToggleSimulationSpeed);
+            languageButton.onClick.AddListener(ToggleLanguage);
             resumeButton.onClick.AddListener(game.TogglePause);
             pauseSpeedButton.onClick.AddListener(game.ToggleSimulationSpeed);
             audioSettingsButton.onClick.AddListener(ToggleAudioSettings);
@@ -89,15 +98,15 @@ namespace FirstGame
             effectsDownButton.onClick.AddListener(() => ChangeEffectsVolume(-0.1f));
             effectsUpButton.onClick.AddListener(() => ChangeEffectsVolume(0.1f));
             closeAudioSettingsButton.onClick.AddListener(ToggleAudioSettings);
-            testProfileButton.image.color = game.IsTestProfile
-                ? new Color(0.25f, 0.8f, 0.55f) : new Color(0.65f, 0.65f, 0.7f);
             restartButton.onClick.AddListener(game.Restart);
             menuButton.onClick.AddListener(game.ReturnToMenu);
             actionButton.onClick.AddListener(PerformAction);
+            specializationButton.onClick.AddListener(() => ChooseSpecialization(1));
             sellButton.onClick.AddListener(SellSelectedTower);
             targetingButton.onClick.AddListener(CycleSelectedTowerTargeting);
             tutorialSkipButton.onClick.AddListener(SkipTutorial);
             tutorialRepeatButton.onClick.AddListener(RestartTutorial);
+            RefreshLanguageLabels();
             actionPanel.SetActive(false);
             buildMenu.SetActive(false);
             resultPanel.SetActive(false);
@@ -110,6 +119,19 @@ namespace FirstGame
             Refresh();
             RefreshTimeControls();
             RefreshAudioSettings();
+        }
+
+        private void ConfigureTestProfileControl()
+        {
+            bool available = GameController.IsTestProfileAvailable;
+            testProfileButton.gameObject.SetActive(available);
+            if (!available) return;
+
+            testProfileButton.onClick.AddListener(game.ToggleTestProfile);
+            testProfileButton.image.color = game.IsTestProfile
+                ? new Color(0.25f, 0.8f, 0.55f) : new Color(0.65f, 0.65f, 0.7f);
+            testProfileButton.GetComponentInChildren<Text>().text = Localization.T(
+                "TEST PROFILE\nRESETS MATCH", "ТЕСТОВЫЙ ПРОФИЛЬ\nСБРОСИТ МАТЧ");
         }
 
         private void Update()
@@ -134,12 +156,28 @@ namespace FirstGame
                 enemiesText.text = wave.IsRunning
                     ? $"Remaining: {wave.Remaining}"
                     : FormatNormalPreparation(game.WaveNumber, wave.NormalWaveCount);
+                if (game.State == GameState.Build && !wave.IsRunning)
+                    enemiesText.text = GetNextWavePreview();
             }
             if (game.WaveConfigurationError != null)
                 enemiesText.text = game.WaveConfigurationError;
             startWaveButton.gameObject.SetActive(!game.IsTestProfile || game.WaveNumber == 0 ||
                 game.WaveConfigurationError != null);
             startWaveButton.interactable = game.CanStartWave;
+        }
+
+        private string GetNextWavePreview()
+        {
+            int nextWave = game.WaveNumber + 1;
+            if (nextWave != previewWaveNumber || previewIsTestProfile != game.IsTestProfile || cachedWavePreview == null)
+            {
+                previewWaveNumber = nextWave;
+                previewIsTestProfile = game.IsTestProfile;
+                string error = wave.PrepareWave(nextWave, game.IsTestProfile, out WaveSettings settings);
+                cachedWavePreview = error ?? FormatWavePreview(nextWave, wave.NormalWaveCount, settings);
+            }
+
+            return cachedWavePreview;
         }
 
         public void RefreshTimeControls()
@@ -178,8 +216,37 @@ namespace FirstGame
 
         private void RefreshAudioSettings()
         {
-            musicVolumeText.text = FormatVolumeLabel("MUSIC", GameAudio.MusicVolume);
-            effectsVolumeText.text = FormatVolumeLabel("EFFECTS", GameAudio.EffectsVolume);
+            musicVolumeText.text = FormatVolumeLabel(Localization.T("MUSIC", "МУЗЫКА"), GameAudio.MusicVolume);
+            effectsVolumeText.text = FormatVolumeLabel(Localization.T("EFFECTS", "ЭФФЕКТЫ"), GameAudio.EffectsVolume);
+        }
+
+        private void ToggleLanguage()
+        {
+            Localization.Toggle();
+            cachedWavePreview = null;
+            RefreshLanguageLabels();
+            Refresh();
+            RefreshTimeControls();
+            RefreshAudioSettings();
+            if (selectedTower) ShowTower(selectedTower);
+            if (selectedSpot) ShowBuildMenu();
+            tutorialText.text = GetTutorialText(tutorialStep);
+            RefreshResultText();
+        }
+
+        private void RefreshLanguageLabels()
+        {
+            languageButton.GetComponentInChildren<Text>().text = Localization.LanguageLabel;
+            menuButton.GetComponentInChildren<Text>().text = Localization.T("MENU", "МЕНЮ");
+            restartButton.GetComponentInChildren<Text>().text = Localization.T("PLAY AGAIN", "СЫГРАТЬ ЕЩЁ РАЗ");
+            tutorialRepeatButton.GetComponentInChildren<Text>().text = Localization.T("REPEAT HINTS", "ПОВТОРИТЬ ПОДСКАЗКИ");
+            tutorialSkipButton.GetComponentInChildren<Text>().text = Localization.T("SKIP", "ПРОПУСТИТЬ");
+            audioSettingsButton.GetComponentInChildren<Text>().text = Localization.T("SOUND", "ЗВУК");
+            closeAudioSettingsButton.GetComponentInChildren<Text>().text = Localization.T("CLOSE", "ЗАКРЫТЬ");
+            musicDownButton.GetComponentInChildren<Text>().text = Localization.T("MUSIC −", "МУЗЫКА −");
+            musicUpButton.GetComponentInChildren<Text>().text = Localization.T("MUSIC +", "МУЗЫКА +");
+            effectsDownButton.GetComponentInChildren<Text>().text = Localization.T("EFFECTS −", "ЭФФЕКТЫ −");
+            effectsUpButton.GetComponentInChildren<Text>().text = Localization.T("EFFECTS +", "ЭФФЕКТЫ +");
         }
 
         public void NotifyWaveStarted()
@@ -189,8 +256,8 @@ namespace FirstGame
 
         private void Refresh()
         {
-            goldText.text = $"Gold: {game.Economy.Gold}";
-            healthText.text = game.IsTestProfile ? "Base: unlimited" : $"Base: {game.BaseHealth.Current}";
+            goldText.text = Localization.T("Gold", "Золото") + $": {game.Economy.Gold}";
+            healthText.text = game.IsTestProfile ? Localization.T("Base: unlimited", "База: без ограничений") : Localization.T("Base", "База") + $": {game.BaseHealth.Current}";
             RefreshWaveStatus();
             if (selectedTower) ShowTower(selectedTower);
             if (selectedSpot) ShowBuildMenu();
@@ -272,9 +339,22 @@ namespace FirstGame
             actionPanel.SetActive(true);
             actionTitle.text = FormatTowerTitle(tower.Config, tower.Level);
             actionDetails.text = FormatTowerDetails(tower.Config, tower.Stats);
-            int cost=tower.CanUpgrade?tower.Stats.upgradeCost:0;
-            actionButtonText.text = FormatUpgradeAction(tower.Config, tower.LevelIndex, game.Economy.Gold);
-            actionButton.interactable = tower.CanUpgrade && game.Economy.Gold >= cost;
+            bool choosingSpecialization = tower.CanChooseSpecialization;
+            specializationButton.gameObject.SetActive(choosingSpecialization);
+            if (choosingSpecialization)
+            {
+                TowerSpecializationConfig[] choices = tower.Config.specializations;
+                actionButtonText.text = FormatSpecializationAction(choices[0], game.Economy.Gold);
+                actionButton.interactable = choices[0] != null && game.Economy.Gold >= choices[0].cost;
+                specializationButtonText.text = FormatSpecializationAction(choices.Length > 1 ? choices[1] : null, game.Economy.Gold);
+                specializationButton.interactable = choices.Length > 1 && choices[1] != null && game.Economy.Gold >= choices[1].cost;
+            }
+            else
+            {
+                int cost=tower.CanUpgrade?tower.Stats.upgradeCost:0;
+                actionButtonText.text = FormatUpgradeAction(tower.Config, tower.LevelIndex, game.Economy.Gold);
+                actionButton.interactable = tower.CanUpgrade && game.Economy.Gold >= cost;
+            }
             sellButtonText.text = FormatSellAction(tower.SellValue);
             sellButton.interactable = game.CanInteract;
             targetingButtonText.text = FormatTargetingAction(tower.TargetingRule);
@@ -286,62 +366,106 @@ namespace FirstGame
             int displayWave = Mathf.Clamp(waveNumber, 0, totalWaves);
             return state switch
             {
-                GameState.Won => $"Victory · wave {totalWaves}/{totalWaves}",
-                GameState.Lost => $"Defeat · wave {Mathf.Max(1, displayWave)}/{totalWaves}",
-                _ => $"Wave {displayWave}/{totalWaves}"
+                GameState.Won => $"{Localization.T("Victory", "Победа")} · {Localization.T("волна", "волна")} {totalWaves}/{totalWaves}",
+                GameState.Lost => $"{Localization.T("Defeat", "Поражение")} · {Localization.T("волна", "волна")} {Mathf.Max(1, displayWave)}/{totalWaves}",
+                _ => $"{Localization.T("Wave", "Волна")} {displayWave}/{totalWaves}"
             };
         }
 
         public static string FormatNormalPreparation(int waveNumber, int totalWaves)
         {
             int nextWave = Mathf.Min(waveNumber + 1, totalWaves);
-            return nextWave > 0 ? $"Next: wave {nextWave}/{totalWaves}" : "No configured waves";
+            return nextWave > 0 ? $"{Localization.T("Next: wave", "Далее: волна")} {nextWave}/{totalWaves}" : Localization.T("No configured waves", "Нет настроенных волн");
         }
+
+        public static string FormatWavePreview(int waveNumber, int totalWaves, WaveSettings settings)
+        {
+            string header = $"{Localization.T("Next: wave", "Далее: волна")} {waveNumber}/{totalWaves} · " +
+                $"{Localization.T("Enemies", "Противники")}: {settings.EnemyCount}";
+            string actions = Localization.T("Actions: build a tower · START WAVE", "Действия: постройте башню · НАЧАТЬ ВОЛНУ");
+            if (settings.Groups == null || settings.Groups.Length == 0)
+                return $"{header}\n{FormatWaveStats(settings.MaxHealth, settings.MoveSpeed)}\n{actions}";
+
+            if (settings.Groups.Length == 1)
+            {
+                WaveGroupSettings group = settings.Groups[0];
+                return $"{header}\n{FormatWaveStats(group.MaxHealth, group.MoveSpeed)}\n{actions}";
+            }
+
+            string groups = Localization.T("Groups", "Группы") + ": ";
+            for (int i = 0; i < settings.Groups.Length; i++)
+            {
+                WaveGroupSettings group = settings.Groups[i];
+                if (i > 0) groups += "; ";
+                groups += $"{group.EnemyCount} × {FormatWaveStats(group.MaxHealth, group.MoveSpeed)}";
+            }
+            return $"{header}\n{groups}\n{actions}";
+        }
+
+        private static string FormatWaveStats(int maxHealth, float speed) =>
+            $"{Localization.T("Max HP", "Макс. ОЗ")}: {maxHealth} · {Localization.T("Base speed", "Базовая скорость")}: {speed:0.##}";
 
         public static string FormatTowerCard(TowerConfig config, int gold, bool isConfigured)
         {
-            if (!config || !isConfigured) return "Tower\nUnavailable: configuration";
+            if (!config || !isConfigured) return Localization.T("Tower\nUnavailable: configuration", "Башня\nНедоступно: конфигурация");
 
             TowerLevelConfig stats = config.levels[0];
-            string affordability = gold >= config.buildCost ? "Ready" : $"Need {config.buildCost - gold} more gold";
-            return $"{config.displayName} · {config.description}\nCost {config.buildCost} · Rate {stats.attackRate:0.0}/s · Range {stats.range:0.0}\n{affordability}";
+            string affordability = gold >= config.buildCost ? Localization.T("Ready", "Готово") : Localization.T($"Need {config.buildCost - gold} more gold", $"Нужно ещё {config.buildCost - gold} золота");
+            return $"{Localization.TowerName(config)} · {Localization.TowerDescription(config)}\n{Localization.T("Cost", "Цена")} {config.buildCost} · {Localization.T("Rate", "Скорость")} {stats.attackRate:0.0}/s · {Localization.T("Range", "Радиус")} {stats.range:0.0}\n{affordability}";
         }
 
         public static string FormatTowerDetails(TowerConfig config, TowerLevelConfig stats)
         {
-            return $"Role: {config.description}\nDamage {stats.damage} · Rate {stats.attackRate:0.0}/s · Range {stats.range:0.0}";
+            return $"{Localization.T("Role", "Роль")}: {Localization.TowerDescription(config)}\n{Localization.T("Damage", "Урон")} {stats.damage} · {Localization.T("Rate", "Скорость")} {stats.attackRate:0.0}/s · {Localization.T("Range", "Радиус")} {stats.range:0.0}";
         }
 
         public static string FormatTowerTitle(TowerConfig config, int level)
         {
-            string title = config ? config.displayName : "Tower";
-            return $"{title} · level {Mathf.Max(1, level)}";
+            string title = Localization.TowerName(config);
+            return $"{title} · {Localization.T("level", "уровень")} {Mathf.Max(1, level)}";
         }
 
         public static string FormatUpgradeAction(TowerConfig config, int levelIndex, int gold)
         {
             if (!config || config.levels == null || levelIndex + 1 >= config.levels.Length)
-                return "Maximum level";
+                return Localization.T("Maximum level", "Максимальный уровень");
 
             TowerLevelConfig current = config.levels[levelIndex];
             int cost = current.upgradeCost;
             TowerLevelConfig next = config.levels[levelIndex + 1];
-            string affordability = gold >= cost ? "Ready" : $"Need {cost - gold} more gold";
-            return $"Upgrade {cost} · Damage {current.damage}→{next.damage} · Rate {current.attackRate:0.0}→{next.attackRate:0.0}/s · Range {current.range:0.0}→{next.range:0.0}\n{affordability}";
+            string affordability = gold >= cost ? Localization.T("Ready", "Готово") : Localization.T($"Need {cost - gold} more gold", $"Нужно ещё {cost - gold} золота");
+            return $"{Localization.T("Upgrade", "Улучшить")} {cost} · {Localization.T("Damage", "Урон")} {current.damage}→{next.damage} · {Localization.T("Rate", "Скорость")} {current.attackRate:0.0}→{next.attackRate:0.0}/s · {Localization.T("Range", "Радиус")} {current.range:0.0}→{next.range:0.0}\n{affordability}";
         }
 
-        public static string FormatSellAction(int refund) => $"SELL · Return {Mathf.Max(0, refund)} gold";
+        public static string FormatSpecializationAction(TowerSpecializationConfig choice, int gold)
+        {
+            if (choice == null || choice.stats == null) return Localization.T("Unavailable", "Недоступно");
+            string affordability = gold >= choice.cost ? Localization.T("Ready", "Готово") :
+                Localization.T($"Need {choice.cost - gold} more gold", $"Нужно ещё {choice.cost - gold} золота");
+            return $"{Localization.SpecializationName(choice)}\n{Localization.SpecializationDescription(choice)}\n{Localization.T("Cost", "Цена")} {choice.cost} · " +
+                $"{Localization.T("Damage", "Урон")} {choice.stats.damage} · {Localization.T("Rate", "Скорость")} {choice.stats.attackRate:0.0}/s · " +
+                $"{Localization.T("Range", "Радиус")} {choice.stats.range:0.0}\n{affordability}";
+        }
+
+        public static string FormatSellAction(int refund) => Localization.T($"SELL · Return {Mathf.Max(0, refund)} gold", $"ПРОДАТЬ · Вернуть {Mathf.Max(0, refund)} золота");
 
         public static string FormatTargetingAction(TargetingRule rule) =>
-            $"TARGET · {rule switch { TargetingRule.ClosestToBase => "Closest to base", TargetingRule.Nearest => "Nearest", TargetingRule.Strongest => "Strongest", _ => "Closest to base" }}";
+            $"{Localization.T("TARGET", "ЦЕЛЬ")} · {rule switch { TargetingRule.ClosestToBase => Localization.T("Closest to base", "Ближе к базе"), TargetingRule.Nearest => Localization.T("Nearest", "Ближайший"), TargetingRule.Strongest => Localization.T("Strongest", "Сильнейший"), _ => Localization.T("Closest to base", "Ближе к базе") }}";
 
-        public static string FormatPauseLabel(bool isPaused) => isPaused ? "RESUME" : "PAUSE";
-        public static string FormatSpeedLabel(float speed) => $"SPEED ×{speed:0}";
+        public static string FormatPauseLabel(bool isPaused) => isPaused ? Localization.T("RESUME", "ПРОДОЛЖИТЬ") : Localization.T("PAUSE", "ПАУЗА");
+        public static string FormatSpeedLabel(float speed) => $"{Localization.T("SPEED", "СКОРОСТЬ")} ×{speed:0}";
 
         private void PerformAction()
         {
             if (!game.CanInteract) return;
-            if (selectedTower && selectedTower.Upgrade()) CloseSelection();
+            if (selectedTower && (selectedTower.CanChooseSpecialization ? selectedTower.ChooseSpecialization(0) : selectedTower.Upgrade())) CloseSelection();
+            Refresh();
+        }
+
+        private void ChooseSpecialization(int index)
+        {
+            if (!game.CanInteract) return;
+            if (selectedTower && selectedTower.ChooseSpecialization(index)) CloseSelection();
             Refresh();
         }
 
@@ -373,21 +497,50 @@ namespace FirstGame
             if (game.IsTestProfile) return;
             CloseSelection();
             resultPanel.SetActive(true);
-            resultText.text = won ? "VICTORY" : "DEFEAT";
+            resultText.fontSize = 42;
+            RefreshResultText();
             testProfileButton.interactable = false;
             RefreshWaveStatus();
             RefreshTimeControls();
+        }
+
+        /// <summary>Formats the complete, player-facing outcome of a normal match.</summary>
+        public static string FormatMatchResult(bool won, int reachedWave, int totalWaves,
+            int baseHealth, int startingBaseHealth)
+        {
+            int safeTotal = Mathf.Max(1, totalWaves);
+            int safeWave = Mathf.Clamp(reachedWave, 1, safeTotal);
+            int safeStartingHealth = Mathf.Max(1, startingBaseHealth);
+            int safeBaseHealth = Mathf.Clamp(baseHealth, 0, safeStartingHealth);
+
+            if (won)
+            {
+                return Localization.T(
+                    $"VICTORY\nAll waves cleared: {safeWave}/{safeTotal}\nBase remaining: {safeBaseHealth}/{safeStartingHealth}",
+                    $"ПОБЕДА\nПройдены все волны: {safeWave}/{safeTotal}\nБаза уцелела: {safeBaseHealth}/{safeStartingHealth}");
+            }
+
+            return Localization.T(
+                $"DEFEAT\nBase destroyed on wave {safeWave}/{safeTotal}\nReason: enemies reached the base\nBase remaining: {safeBaseHealth}/{safeStartingHealth}",
+                $"ПОРАЖЕНИЕ\nБаза разрушена на волне {safeWave}/{safeTotal}\nПричина: враги добрались до базы\nБаза осталась: {safeBaseHealth}/{safeStartingHealth}");
+        }
+
+        private void RefreshResultText()
+        {
+            if (!game || game.IsTestProfile) return;
+            resultText.text = FormatMatchResult(game.State == GameState.Won, game.WaveNumber,
+                wave.NormalWaveCount, game.BaseHealth.Current, game.BaseHealth.StartingHealth);
         }
 
         public static string GetTutorialText(int step)
         {
             return step switch
             {
-                0 => "1/4 Tap a glowing build spot to choose where to place your first tower.",
-                1 => "2/4 Choose a tower you can afford. Base is the cheapest long-range start.",
-                2 => "3/4 Press START WAVE when your tower is ready.",
-                3 => "4/4 Protect the base. If an enemy gets through, the Base value at the top goes down.",
-                _ => "Tutorial complete. You can repeat these hints at any time."
+                0 => Localization.T("1/4 Tap a glowing build spot to choose where to place your first tower.", "1/4 Нажмите на светящуюся площадку, чтобы выбрать место для первой башни."),
+                1 => Localization.T("2/4 Choose a tower you can afford. Base is the cheapest long-range start.", "2/4 Выберите башню, которую можете купить. Базовая башня — недорогой дальнобойный старт."),
+                2 => Localization.T("3/4 Press START WAVE when your tower is ready.", "3/4 Нажмите НАЧАТЬ ВОЛНУ, когда башня готова."),
+                3 => Localization.T("4/4 Protect the base. If an enemy gets through, the Base value at the top goes down.", "4/4 Защищайте базу. Если враг пройдёт, значение Базы сверху уменьшится."),
+                _ => Localization.T("Tutorial complete. You can repeat these hints at any time.", "Обучение завершено. Подсказки можно повторить в любой момент.")
             };
         }
 
@@ -495,7 +648,7 @@ namespace FirstGame
 
         private void EnsureTowerActionUi()
         {
-            if (sellButton && sellButtonText && targetingButton && targetingButtonText) return;
+            if (sellButton && sellButtonText && targetingButton && targetingButtonText && specializationButton && specializationButtonText) return;
 
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             RectTransform upgradeRect = (RectTransform)actionButton.transform;
@@ -503,6 +656,12 @@ namespace FirstGame
             upgradeRect.anchorMax = new Vector2(.94f, .43f);
             upgradeRect.offsetMin = Vector2.zero;
             upgradeRect.offsetMax = Vector2.zero;
+
+            specializationButton = CreateTutorialButton(actionPanel.transform, font, "SPECIALIZATION", new Vector2(.06f, .27f), new Vector2(.94f, .43f), new Color(.45f, .55f, .88f));
+            specializationButton.name = "Specialization";
+            specializationButtonText = specializationButton.GetComponentInChildren<Text>();
+            specializationButtonText.fontSize = 16;
+            specializationButton.gameObject.SetActive(false);
 
             sellButton = CreateTutorialButton(actionPanel.transform, font, "SELL", new Vector2(.06f, .06f), new Vector2(.48f, .22f), new Color(.78f, .36f, .32f));
             sellButton.name = "Sell";
@@ -521,6 +680,14 @@ namespace FirstGame
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             menuButton = CreateTutorialButton(GetUiLayoutParent(canvas), font, "MENU",
                 new Vector2(.21f, .785f), new Vector2(.36f, .835f), new Color(.45f, .45f, .5f));
+        }
+
+        private void EnsureLanguageButton()
+        {
+            if (languageButton) return;
+            Canvas canvas = GetComponentInParent<Canvas>();
+            languageButton = CreateTutorialButton(GetUiLayoutParent(canvas), Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"), Localization.LanguageLabel,
+                new Vector2(.37f, .785f), new Vector2(.53f, .835f), new Color(.55f, .38f, .75f));
         }
 
         private void EnsureSafeAreaLayout()

@@ -11,6 +11,7 @@ namespace FirstGame
         [SerializeField] private EnemyConfig enemyConfig;
         [SerializeField] private GameObject enemyPrefab;
         [SerializeField] private Transform[] route;
+        private float[] routeDistanceFromWaypoint;
         private readonly Dictionary<GameObject, Queue<Enemy>> pools = new();
         private WaveSettings currentWave;
         private int spawned;
@@ -22,6 +23,13 @@ namespace FirstGame
         internal bool IsFinalNormalWave(int waveNumber) => config && waveNumber >= config.NormalWaveCount;
         public event Action Completed;
 
+        public void Configure(WaveConfig waveConfig, Transform[] waypoints)
+        {
+            config = waveConfig;
+            route = waypoints;
+            routeDistanceFromWaypoint = Enemy.CacheRouteDistances(route, routeDistanceFromWaypoint);
+        }
+
         internal string PrepareWave(int waveNumber, bool isTestProfile, out WaveSettings settings)
         {
             settings = default;
@@ -32,10 +40,13 @@ namespace FirstGame
                 return "Normal mode requires a configured finite wave sequence.";
 
             settings = config.GetSettings(waveNumber, isTestProfile, enemyConfig, enemyPrefab);
-            if (!settings.EnemyConfig) return "Missing enemy configuration.";
-            if (!settings.EnemyPrefab || !settings.EnemyPrefab.TryGetComponent(out Enemy enemy)
-                || !enemy.HasRequiredReferences)
-                return "Enemy prefab requires an Enemy with valid component references.";
+            foreach (WaveGroupSettings group in settings.Groups)
+            {
+                if (!group.EnemyConfig) return "Missing enemy configuration.";
+                if (!group.EnemyPrefab || !group.EnemyPrefab.TryGetComponent(out Enemy enemy)
+                    || !enemy.HasRequiredReferences)
+                    return "Enemy prefab requires an Enemy with valid component references.";
+            }
 
             return null;
         }
@@ -53,18 +64,23 @@ namespace FirstGame
         private IEnumerator SpawnRoutine()
         {
             // Keep separate pools so a wave cannot reuse a different enemy type's prefab.
-            if (!pools.TryGetValue(currentWave.EnemyPrefab, out Queue<Enemy> pool))
+            foreach (WaveGroupSettings group in currentWave.Groups)
             {
-                pool = new Queue<Enemy>();
-                pools.Add(currentWave.EnemyPrefab, pool);
-            }
-            Action<Enemy> onFinished = enemy => OnEnemyFinished(enemy, pool);
-            while (spawned < currentWave.EnemyCount)
-            {
-                Enemy enemy = pool.Count > 0 ? pool.Dequeue() : Instantiate(currentWave.EnemyPrefab).GetComponent<Enemy>();
-                spawned++;
-                enemy.Spawn(currentWave.EnemyConfig, route, onFinished, currentWave.MaxHealth);
-                yield return new WaitForSeconds(currentWave.SpawnInterval);
+                if (!pools.TryGetValue(group.EnemyPrefab, out Queue<Enemy> pool))
+                {
+                    pool = new Queue<Enemy>();
+                    pools.Add(group.EnemyPrefab, pool);
+                }
+                Action<Enemy> onFinished = enemy => OnEnemyFinished(enemy, pool);
+                for (int groupSpawned = 0; groupSpawned < group.EnemyCount; groupSpawned++)
+                {
+                    Enemy enemy = pool.Count > 0 ? pool.Dequeue() : Instantiate(group.EnemyPrefab).GetComponent<Enemy>();
+                    spawned++;
+                    routeDistanceFromWaypoint ??= Enemy.CacheRouteDistances(route);
+                    enemy.Spawn(group.EnemyConfig, route, onFinished, group.MaxHealth,
+                        group.MoveSpeed, routeDistanceFromWaypoint);
+                    yield return new WaitForSeconds(group.SpawnInterval);
+                }
             }
         }
 

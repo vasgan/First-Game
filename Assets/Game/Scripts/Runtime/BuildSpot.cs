@@ -8,6 +8,12 @@ namespace FirstGame
         [SerializeField] private SpriteRenderer marker;
         private bool isBuilding;
         public bool IsOccupied { get; private set; }
+
+        public void Configure(TowerFactory factory, SpriteRenderer spriteMarker)
+        {
+            towerFactory = factory;
+            marker = spriteMarker;
+        }
         private void OnMouseDown()
         {
             if (!UiInputGuard.IsPointerOverUi() && !IsOccupied && GameController.Instance.CanInteract)

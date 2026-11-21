@@ -20,9 +20,12 @@ namespace FirstGame
 
         private EnemyConfig config;
         private Transform[] route;
+        private float[] routeDistanceFromWaypoint;
+        private bool ownsRouteDistanceCache;
         private int waypointIndex;
         private int health;
         private int maxHealth;
+        private float moveSpeed;
         private int spawnVersion;
         private float bobTime;
         private float chillRemaining;
@@ -39,26 +42,37 @@ namespace FirstGame
             get
             {
                 if (route == null || waypointIndex >= route.Length) return 0f;
-
-                float distance = Vector3.Distance(transform.position, route[waypointIndex].position);
-                for (int index = waypointIndex; index < route.Length - 1; index++)
-                    distance += Vector3.Distance(route[index].position, route[index + 1].position);
-
-                return distance;
+                return Vector3.Distance(transform.position, route[waypointIndex].position) +
+                    routeDistanceFromWaypoint[waypointIndex];
             }
         }
         internal bool HasRequiredReferences => body && healthFill;
 
-        public void Spawn(EnemyConfig enemyConfig, Transform[] waypoints, Action<Enemy> onFinished, int? waveMaxHealth = null)
+        public void Spawn(EnemyConfig enemyConfig, Transform[] waypoints, Action<Enemy> onFinished,
+            int? waveMaxHealth = null, float? waveMoveSpeed = null, float[] cachedRouteDistances = null)
         {
             StopAllCoroutines();
             ClearChill();
             normalColor = body.color;
             config = enemyConfig;
             route = waypoints;
+            if (cachedRouteDistances != null && cachedRouteDistances.Length == route.Length)
+            {
+                routeDistanceFromWaypoint = cachedRouteDistances;
+                ownsRouteDistanceCache = false;
+            }
+            else
+            {
+                if (!ownsRouteDistanceCache || routeDistanceFromWaypoint == null ||
+                    routeDistanceFromWaypoint.Length != route.Length)
+                    routeDistanceFromWaypoint = new float[route.Length];
+                ownsRouteDistanceCache = true;
+                CacheRouteDistances(route, routeDistanceFromWaypoint);
+            }
             finished = onFinished;
             waypointIndex = 1;
             maxHealth = Mathf.Max(1, waveMaxHealth ?? config.maxHealth);
+            moveSpeed = Mathf.Max(.01f, waveMoveSpeed ?? config.moveSpeed);
             health = maxHealth;
             spawnVersion++;
             IsAlive = true;
@@ -67,6 +81,21 @@ namespace FirstGame
             healthFill.localScale = Vector3.one;
             gameObject.SetActive(true);
             Active.Add(this);
+        }
+
+        internal static float[] CacheRouteDistances(Transform[] waypoints, float[] buffer = null)
+        {
+            if (waypoints == null || waypoints.Length == 0) return Array.Empty<float>();
+            if (buffer == null || buffer.Length != waypoints.Length)
+                buffer = new float[waypoints.Length];
+
+            buffer[waypoints.Length - 1] = 0f;
+            for (int index = waypoints.Length - 2; index >= 0; index--)
+            {
+                buffer[index] = buffer[index + 1] +
+                    Vector3.Distance(waypoints[index].position, waypoints[index + 1].position);
+            }
+            return buffer;
         }
 
         private void Update()
@@ -90,7 +119,7 @@ namespace FirstGame
         private void Move(float deltaTime)
         {
             float chilledTime = Mathf.Min(chillRemaining, deltaTime);
-            float distance = config.moveSpeed * (deltaTime - chilledTime * (1f - ChilledSpeedMultiplier));
+            float distance = moveSpeed * (deltaTime - chilledTime * (1f - ChilledSpeedMultiplier));
             transform.position = Vector3.MoveTowards(transform.position, route[waypointIndex].position, distance);
 
             if (chillRemaining <= 0f) return;
