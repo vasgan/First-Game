@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, viewport-fit=cover">
+  <title>Glow Path Defense</title>
+  <style>
+    :root { color-scheme: dark; background: #110626; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { align-items: center; background: radial-gradient(circle at top, #36105f, #110626 68%); display: flex; margin: 0; min-height: 100dvh; }
+    #unity-container { display: flex; flex-direction: column; margin: auto; max-height: 100dvh; max-width: 100vw; padding: 12px; width: min(100vw, 680px); }
+    #unity-frame { aspect-ratio: 9 / 16; background: #080210; border: 1px solid #7443a5; box-shadow: 0 10px 45px #0009; position: relative; width: 100%; }
+    #unity-canvas { display: block; height: 100%; width: 100%; }
+    #unity-loading, #webgl-unavailable { align-items: center; background: #120723ee; display: flex; flex-direction: column; inset: 0; justify-content: center; padding: 24px; position: absolute; text-align: center; }
+    #webgl-unavailable { display: none; }
+    #progress { background: #321052; border-radius: 999px; height: 12px; margin-top: 16px; max-width: 320px; overflow: hidden; width: 80%; }
+    #progress-value { background: #a86cff; height: 100%; transition: width .15s linear; width: 0; }
+    #unity-warning { color: #ffe9a8; min-height: 1.4em; padding: 6px 0; text-align: center; }
+    #footer { align-items: center; display: flex; font-size: 13px; gap: 12px; justify-content: space-between; padding: 9px 2px 0; }
+    #fullscreen { background: #7443a5; border: 0; border-radius: 5px; color: white; cursor: pointer; padding: 7px 11px; }
+    #fullscreen:disabled { cursor: not-allowed; opacity: .55; }
+  </style>
+</head>
+<body>
+  <main id="unity-container">
+    <section id="unity-frame">
+      <canvas id="unity-canvas" width="1080" height="1920" tabindex="-1"></canvas>
+      <div id="unity-loading"><strong>Loading Glow Path Defense</strong><div id="progress"><div id="progress-value"></div></div></div>
+      <div id="webgl-unavailable"><strong>WebGL 2 is unavailable</strong><p>Use a browser with WebGL 2 and hardware acceleration enabled.</p></div>
+    </section>
+    <div id="unity-warning" role="status" aria-live="polite"></div>
+    <footer id="footer"><span>Glow Path Defense · v0.1.1</span><button id="fullscreen" type="button">Fullscreen</button></footer>
+  </main>
+  <script>
+    const canvas = document.querySelector('#unity-canvas');
+    const loading = document.querySelector('#unity-loading');
+    const unavailable = document.querySelector('#webgl-unavailable');
+    const warning = document.querySelector('#unity-warning');
+    const fullscreen = document.querySelector('#fullscreen');
+    const frame = document.querySelector('#unity-frame');
+    const supportsWebGL = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (_) { return false; } })();
+    const fitFrame = () => { frame.style.maxHeight = `${window.innerHeight - 58}px`; };
+    window.addEventListener('resize', fitFrame);
+    fitFrame();
+
+    function showMessage(message, type) {
+      warning.textContent = message;
+      warning.style.color = type === 'error' ? '#ff9a9a' : '#ffe9a8';
+    }
+
+    if (!supportsWebGL) {
+      loading.style.display = 'none';
+      unavailable.style.display = 'flex';
+      fullscreen.disabled = true;
+    } else {
+      const buildUrl = 'Build';
+      const config = {
+        dataUrl: `${buildUrl}/6043962695750b8cc745c3dee46da426.data.unityweb`,
+        frameworkUrl: `${buildUrl}/8d460eeeefb07f867ba87583812459f2.framework.js.unityweb`,
+        codeUrl: `${buildUrl}/f4a9919a803f99e84ca898eb2fb7653e.wasm.unityweb`,
+        streamingAssetsUrl: 'StreamingAssets',
+        companyName: 'First Game',
+        productName: 'Glow Path Defense',
+        productVersion: '0.1.1',
+        showBanner: showMessage
+      };
+      const loader = document.createElement('script');
+      loader.src = `${buildUrl}/d5b3c1201a57399b84c941451313a173.loader.js`;
+      loader.onerror = () => showMessage('Failed to load the Unity loader. Run this build through a local HTTP server.', 'error');
+      loader.onload = () => createUnityInstance(canvas, config, progress => {
+        document.querySelector('#progress-value').style.width = `${Math.round(progress * 100)}%`;
+      }).then(instance => {
+        loading.style.display = 'none';
+        fullscreen.onclick = () => instance.SetFullscreen(1);
+      }).catch(error => {
+        loading.style.display = 'none';
+        showMessage(`Unable to start the game: ${error}`, 'error');
+      });
+      document.body.appendChild(loader);
+    }
+  </script>
+</body>
+</html>
