@@ -22,14 +22,16 @@ namespace FirstGame
             GameObject routeRoot = GameObject.Find("Route") ?? new GameObject("Route");
             Sprite spotSprite = FindSprite("BuildSpot");
             Sprite baseSprite = FindSprite("Base");
+            Sprite fieldTileSprite = FindSprite("PathTile");
             TowerFactory factory = Object.FindFirstObjectByType<TowerFactory>();
-            if (!HasCompletePalette(level.routePalette) || !spotSprite || !baseSprite || !factory)
+            if (!HasCompletePalette(level.routePalette) || !spotSprite || !baseSprite || !fieldTileSprite || !factory)
             {
                 Debug.LogError("Selected level requires its complete route-tile palette, build spot, base, and tower factory visuals.");
                 return;
             }
 
             ApplyInactiveFieldFill();
+            ApplyFieldFill(Camera.main, fieldTileSprite);
             ClearChildren(routeRoot.transform);
             foreach (BuildSpot oldSpot in Object.FindObjectsByType<BuildSpot>(FindObjectsSortMode.None))
                 Object.Destroy(oldSpot.gameObject);
@@ -43,7 +45,7 @@ namespace FirstGame
                 route[index] = waypoint.transform;
             }
 
-            DrawRoute(level.route, level.routePalette, routeRoot.transform);
+            DrawRoute(level.route, level.routePalette, routeRoot.transform, fieldTileSprite);
 
             GameObject baseObject = GameObject.Find("Base");
             if (baseObject)
@@ -105,6 +107,28 @@ namespace FirstGame
             background.position += new Vector3(offset.x, offset.y, 0f);
         }
 
+        private static void ApplyFieldFill(Camera camera, Sprite tileSprite)
+        {
+            if (!camera || !tileSprite) return;
+
+            GameObject fill = GameObject.Find("FieldFill") ?? new GameObject("FieldFill");
+            SpriteRenderer renderer = fill.GetComponent<SpriteRenderer>() ?? fill.AddComponent<SpriteRenderer>();
+            renderer.sprite = tileSprite;
+            renderer.color = Color.white;
+            renderer.sortingOrder = -19;
+            renderer.maskInteraction = SpriteMaskInteraction.VisibleOutsideMask;
+
+            float spriteWidth = tileSprite.bounds.size.x;
+            float spriteHeight = tileSprite.bounds.size.y;
+            if (spriteWidth <= Mathf.Epsilon || spriteHeight <= Mathf.Epsilon) return;
+
+            float viewportWidth = camera.orthographicSize * 2f * camera.aspect;
+            float viewportHeight = camera.orthographicSize * 2f;
+            float coverScale = Mathf.Max(viewportWidth / spriteWidth, viewportHeight / spriteHeight);
+            fill.transform.position = new Vector3(camera.transform.position.x, camera.transform.position.y, 0f);
+            fill.transform.localScale = new Vector3(coverScale, coverScale, 1f);
+        }
+
         private static void ClearChildren(Transform parent)
         {
             for (int index = parent.childCount - 1; index >= 0; index--)
@@ -117,7 +141,7 @@ namespace FirstGame
             return target ? target.GetComponent<SpriteRenderer>()?.sprite : null;
         }
 
-        private static void DrawRoute(Vector2[] route, RouteTilePalette palette, Transform root)
+        private static void DrawRoute(Vector2[] route, RouteTilePalette palette, Transform root, Sprite fieldTileSprite)
         {
             Dictionary<Vector2Int, Sprite> tiles = new();
             for (int segment = 0; segment < route.Length - 1; segment++)
@@ -149,6 +173,10 @@ namespace FirstGame
 
             for (int point = 1; point < route.Length - 1; point++)
                 SetCornerTile(tiles, route[point] - route[point - 1], route[point + 1] - route[point], route[point], palette);
+
+            foreach (Vector2Int key in tiles.Keys)
+                CreateRouteMask(new Vector2(key.x, key.y) * .5f, fieldTileSprite, root);
+            CreateEndpointFieldMasks(route, fieldTileSprite, root);
 
             foreach ((Vector2Int key, Sprite sprite) in tiles)
                 CreateTile("RouteTile", new Vector2(key.x, key.y) * .5f, sprite, root, Color.white);
@@ -194,12 +222,41 @@ namespace FirstGame
             Sprite sprite)
         {
             if (IsInnerCornerBorder(route, segment, step, count, direction, side)) return;
+            if (TryGetEndpointBorderShortening(route, segment, step, count, direction, out Vector2 endpointShortening))
+            {
+                SetTile(tiles, position + endpointShortening * BorderOffset, sprite);
+                return;
+            }
             if (TryGetInnerAdjacentShortening(route, segment, step, count, direction, side, out Vector2 shortening))
             {
                 SetTile(tiles, position + shortening * BorderOffset, sprite);
                 return;
             }
             SetTile(tiles, position, sprite);
+        }
+
+        private static bool TryGetEndpointBorderShortening(
+            Vector2[] route,
+            int segment,
+            int step,
+            int count,
+            Vector2 direction,
+            out Vector2 shortening)
+        {
+            if (segment == 0 && step == 0)
+            {
+                shortening = direction;
+                return true;
+            }
+
+            if (segment == route.Length - 2 && step == count)
+            {
+                shortening = -direction;
+                return true;
+            }
+
+            shortening = Vector2.zero;
+            return false;
         }
 
         private static bool TryGetInnerAdjacentShortening(
@@ -304,6 +361,66 @@ namespace FirstGame
             renderer.sprite = sprite;
             renderer.color = color;
             renderer.sortingOrder = -2;
+        }
+
+        private static void CreateRouteMask(Vector2 position, Sprite sprite, Transform root)
+        {
+            GameObject maskObject = new("RouteFillMask");
+            maskObject.transform.SetParent(root);
+            maskObject.transform.position = position;
+            float spriteWidth = sprite.bounds.size.x;
+            if (spriteWidth > Mathf.Epsilon)
+                maskObject.transform.localScale = Vector3.one * (TileStep / spriteWidth);
+
+            SpriteMask mask = maskObject.AddComponent<SpriteMask>();
+            mask.sprite = sprite;
+            mask.isCustomRangeActive = true;
+            mask.backSortingOrder = -20;
+            mask.frontSortingOrder = -1;
+        }
+
+        private static void CreateEndpointFieldMasks(Vector2[] route, Sprite sprite, Transform root)
+        {
+            Camera camera = Camera.main;
+            if (!camera || route.Length < 2) return;
+
+            float top = camera.transform.position.y + camera.orthographicSize;
+            float bottom = camera.transform.position.y - camera.orthographicSize;
+            float width = camera.orthographicSize * 2f * camera.aspect;
+
+            Vector2 startOutward = (route[0] - route[1]).normalized;
+            if (startOutward.y > .5f && top > route[0].y)
+                CreateRectangleMask(new Vector2(camera.transform.position.x, (top + route[0].y) * .5f),
+                    new Vector2(width, top - route[0].y), sprite, root);
+            else if (startOutward.y < -.5f && bottom < route[0].y)
+                CreateRectangleMask(new Vector2(camera.transform.position.x, (bottom + route[0].y) * .5f),
+                    new Vector2(width, route[0].y - bottom), sprite, root);
+
+            int last = route.Length - 1;
+            Vector2 finishOutward = (route[last] - route[last - 1]).normalized;
+            if (finishOutward.y > .5f && top > route[last].y)
+                CreateRectangleMask(new Vector2(camera.transform.position.x, (top + route[last].y) * .5f),
+                    new Vector2(width, top - route[last].y), sprite, root);
+            else if (finishOutward.y < -.5f && bottom < route[last].y)
+                CreateRectangleMask(new Vector2(camera.transform.position.x, (bottom + route[last].y) * .5f),
+                    new Vector2(width, route[last].y - bottom), sprite, root);
+        }
+
+        private static void CreateRectangleMask(Vector2 position, Vector2 size, Sprite sprite, Transform root)
+        {
+            if (size.x <= Mathf.Epsilon || size.y <= Mathf.Epsilon) return;
+
+            GameObject maskObject = new("EndpointFieldMask");
+            maskObject.transform.SetParent(root);
+            maskObject.transform.position = position;
+            Vector2 spriteSize = sprite.bounds.size;
+            maskObject.transform.localScale = new Vector3(size.x / spriteSize.x, size.y / spriteSize.y, 1f);
+
+            SpriteMask mask = maskObject.AddComponent<SpriteMask>();
+            mask.sprite = sprite;
+            mask.isCustomRangeActive = true;
+            mask.backSortingOrder = -20;
+            mask.frontSortingOrder = -1;
         }
 
     }

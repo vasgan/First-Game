@@ -76,6 +76,34 @@ namespace FirstGameEditor
             Debug.Log("FIRST_GAME_WEBGL_BUILD_COMPLETE");
         }
 
+        [MenuItem("First Game/Build macOS")]
+        public static void BuildMacOS()
+        {
+            WebGlBuildValidation.Validate();
+
+            var scenes = new List<string>();
+            foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+            {
+                if (scene.enabled)
+                    scenes.Add(scene.path);
+            }
+
+            if (scenes.Count == 0)
+                throw new BuildFailedException("Enable at least one scene in Build Profiles before building macOS.");
+
+            BuildPlayerOptions options = new()
+            {
+                scenes = scenes.ToArray(),
+                locationPathName = "Builds/macOS/Glow Path Defense.app",
+                target = BuildTarget.StandaloneOSX,
+                options = BuildOptions.None
+            };
+            UnityEditor.Build.Reporting.BuildReport report = BuildPipeline.BuildPlayer(options);
+            if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+                throw new System.Exception("macOS build failed: " + report.summary.result);
+            Debug.Log("FIRST_GAME_MACOS_BUILD_COMPLETE");
+        }
+
         private static void ConfigureProject()
         {
             PlayerSettings.productName = "Glow Path Defense";
